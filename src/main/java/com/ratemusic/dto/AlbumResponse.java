@@ -23,7 +23,9 @@ public class AlbumResponse {
 
     private AlbumType type;
 
-    public AlbumResponse(Album album) {
+    private Double averageRate;
+
+    public AlbumResponse(Album album, Double averageRate) {
         this.id = album.getId();
         this.title = album.getTitle();
         this.artist = album.getArtist();
@@ -31,5 +33,6 @@ public class AlbumResponse {
         this.genre = album.getGenre();
         this.releasedAt = album.getReleasedAt();
         this.type = album.getType();
+        this.averageRate = averageRate;
     }
 }
