@@ -7,6 +7,9 @@ import com.ratemusic.exception.NotFoundException;
 import com.ratemusic.repository.AlbumRepository;
 import com.ratemusic.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,19 +37,21 @@ public class AlbumService {
     }
 
     //전체 앨범 조회
-    public List<AlbumResponse> getAll(){
-        return albumRepository.findAll()
-                .stream()
-                .map(album -> new AlbumResponse(album,Optional.ofNullable(reviewRepository.getAvgRateByAlbumId(album.getId())).orElse(DEFAULT_RATE)))
-                .collect(Collectors.toList());
+    public Page<AlbumResponse> getAll(Pageable pageable){
+        return albumRepository.findAll(pageable)
+                .map(album -> new AlbumResponse(album, getAverageRate(album.getId())));
     }
 
     //단건 앨범 조회
     public AlbumResponse getOne(Long id){
         Album album = albumRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 앨범입니다."));
-        Double averageRate = Optional.ofNullable(reviewRepository.getAvgRateByAlbumId(id)).orElse(DEFAULT_RATE);
-        return new AlbumResponse(album,averageRate);
+        return new AlbumResponse(album,getAverageRate(id));
+    }
+
+    //앨범 평균 평점
+    private Double getAverageRate(Long id) {
+        return Optional.ofNullable(reviewRepository.getAvgRateByAlbumId(id)).orElse(DEFAULT_RATE);
     }
 
     //앨범 수정
@@ -56,7 +61,7 @@ public class AlbumService {
                 .orElseThrow(() -> new NotFoundException("존재하지 않는 앨범입니다."));
         album.update(request.getTitle(), request.getArtist(), request.getDescription(),
                 request.getGenre(), request.getReleasedAt(), request.getType());
-        Double averageRate = Optional.ofNullable(reviewRepository.getAvgRateByAlbumId(id)).orElse(DEFAULT_RATE);
+        Double averageRate = getAverageRate(id);
         return new AlbumResponse(album,averageRate);
     }
 
@@ -65,5 +70,13 @@ public class AlbumService {
         albumRepository.findById(id)
                         .orElseThrow(() -> new NotFoundException("존재하지 않는 앨범입니다."));
         albumRepository.deleteById(id);
+    }
+
+    //앨범 검색
+    public Page<AlbumResponse> search(String keyword, String genre, Pageable pageable){
+        if(keyword.isBlank()) throw new IllegalArgumentException("검색어를 입력해주세요.");
+        //keyword = "%"+keyword+"%";
+        return albumRepository.findByTitleOrArtistWithGenre(keyword,genre,pageable)
+                .map(album -> new AlbumResponse(album, getAverageRate(album.getId())));
     }
 }
